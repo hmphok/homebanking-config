@@ -1,0 +1,31 @@
+services:
+  init:
+    image: alpine:3.20
+    env_file: .env
+    command: >
+      sh -lc '
+        set -eu
+        mkdir -p /work/keys/google /work/keys/gocardless /work/data
+        chmod 700 /work/keys /work/keys/google /work/keys/gocardless /work/data
+        chown -R ${PUID}:${PGID} /work/keys /work/data
+        echo "Init done"
+      '
+    volumes:
+      - ./:/work:rw
+    restart: "no"
+
+  balance-to-sheets:
+    image: ghcr.io/hmphok/homebanking:latest
+    restart: "no"
+    env_file: .env
+
+    # Ensures ./data is writable by your host user
+    user: "${PUID}:${PGID}"
+
+    environment:
+      BALANCE_TYPE_PREFERENCE: "${BALANCE_TYPE_PREFERENCE:-closingBooked,closingAvailable,interimBooked,interimAvailable,expected}"
+
+    volumes:
+      - ./keys/gocardless:/secrets/gcbad:ro
+      - ./keys/google:/secrets/gsheets:ro
+      - ./data:/data
